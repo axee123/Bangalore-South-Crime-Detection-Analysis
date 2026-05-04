@@ -1,0 +1,62 @@
+setwd("C:/Users/welcome/Desktop")
+crime<-read.xl("crime_cleaned.xlsx")
+View(crime)
+crime <-readxl::read_excel("C:/DM/crime_data_bengaluru.xlsx")
+#Pre process
+colSums(is.na(crime))
+crime <- crime[rowSums(is.na(crime)) !=ncol(crime),]
+crime$`Police Station`[is.na(crime$`Police Station`)] <- "Unknown"
+crime$Type[is.na(crime$Type)] <- "Unsepcified"
+crime$Place[is.na(crime$Place)] <- "Unknown"
+crime$Latitude[is.na(crime$Latitude)] <- mean(crime$Latitude,na.rm = TRUE)
+crime$Longitude[is.na(crime$Longitude)] <- mean(crime$Longitude,na.rm = TRUE)
+crime$Date <- as.Date(as.numeric(crime$Date),origin = "1899-12-30")
+crime$Time <- as.numeric(crime$Time)
+crime$Time <- format(as.POSIXct(crime$Time * 86400, origin="1970-01-01",tz="UTC"),"%H:%M")
+crime <- unique(crime)
+crime$Latitude <- as.numeric(crime$Latitude)
+crime$Longitude <- as.numeric(crime$Longitude)
+
+crime <- crime[crime$Latitude>= -90 & crime$Latitude<=90 ,]
+crime <- crime[crime$Longitude>= -180 & crime$Longitude<=180 ,]
+crime <- na.omit(crime)
+writexl::write_xlsx(crime,"crime_cleaned.xlsx")
+colnames(crime)[colnames(crime)== "Police Station"] <- "Police_Station"
+library(dplyr)
+library(ggplot2)
+p <- crime |>
+  group_by(Year ,Type) |>
+  summarise(count = n(), .groups="drop") |>
+  ggplot(aes(x = Year, y = count, fill = Type)) +
+  geom_col(position = "dodge") + theme_minimal() + labs(title=" Year wise crime trend" ,x="Year",y="Number of crimes",fill="Crime type")
+windows()
+print(p)
+
+
+p2 <- crime |>
+  group_by(Police_Station) |>
+  summarise(count = n()) |>
+  arrange(desc(count))
+print(p2)
+View(crime)
+library(arules)
+crime_trans <- crime |>
+  select(Type, Police_Station) |>
+  lapply(as.factor) |>
+  as("transactions")
+crime_trans <- as(crime_trans, "transactions")
+rules <- apriori(crime_trans, parameter = list(supp = 0.001, conf = 0.1, minlen=2, maxlen=5))
+inspect(rules[1:10])
+library(readxl)
+library(ggplot2)
+library(dplyr)
+coords <- crime |> select(Latitude,Longitude)
+set.seed(123)
+clusters <- kmeans(coords, centers = 5
+crime$Cluster <- clusters$cluster
+windows()
+print(ggplot(crime, aes(x = Longitude, y = Latitude, color = as.factor(Cluster))) +
+  geom_point(size = 5, alpha = 0.7) +
+  labs(title = "Clustering", color = "Cluster") +
+  theme_minimal()
+)
